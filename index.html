@@ -9,25 +9,60 @@ const ADMINS = [
 
 let isAdmin = false;
 
-/* ===== ДАННЫЕ ===== */
-let laws = {
+/* ===== СТРУКТУРА ===== */
+const DEFAULT_LAWS = {
   "ПГО": [],
   "ПОиП": [],
   "ПКО": []
 };
 
-/* LOAD */
+let laws = structuredClone(DEFAULT_LAWS);
+
+/* ===== LOAD (С ЗАЩИТОЙ) ===== */
 function loadData(){
-  const saved = localStorage.getItem("lawsData");
-  if(saved){
-    laws = JSON.parse(saved);
+  try {
+    const saved = localStorage.getItem("lawsData");
+
+    if(!saved) return;
+
+    const parsed = JSON.parse(saved);
+
+    laws = {
+      "ПГО": Array.isArray(parsed["ПГО"]) ? parsed["ПГО"] : [],
+      "ПОиП": Array.isArray(parsed["ПОиП"]) ? parsed["ПОиП"] : [],
+      "ПКО": Array.isArray(parsed["ПКО"]) ? parsed["ПКО"] : []
+    };
+
+  } catch(e){
+    console.log("⚠️ Ошибка загрузки, использую дефолт", e);
+    laws = structuredClone(DEFAULT_LAWS);
   }
 }
-loadData();
 
-/* SAVE */
+/* ===== SAVE ===== */
 function saveData(){
-  localStorage.setItem("lawsData", JSON.stringify(laws));
+  try {
+    localStorage.setItem("lawsData", JSON.stringify(laws));
+    localStorage.setItem("lawsBackup", JSON.stringify(laws));
+  } catch(e){
+    console.log("⚠️ Ошибка сохранения", e);
+  }
+}
+
+/* ===== BACKUP RESTORE ===== */
+function restoreBackup(){
+  try {
+    const saved = localStorage.getItem("lawsBackup");
+
+    if(saved){
+      laws = JSON.parse(saved);
+      saveData();
+      render();
+      alert("Данные восстановлены");
+    }
+  } catch(e){
+    alert("Ошибка восстановления");
+  }
 }
 
 /* ===== LOGIN ===== */
@@ -104,6 +139,7 @@ function deleteLaw(code,id){
   if(!isAdmin) return;
 
   laws[code] = laws[code].filter(l => l.id !== id);
+
   saveData();
   render();
 }
@@ -121,7 +157,7 @@ function toggleFavorite(code,id){
   render();
 }
 
-/* ===== RENDER ===== */
+/* ===== SEARCH + RENDER ===== */
 function render(){
   let s = document.getElementById("search").value.toLowerCase();
 
@@ -153,7 +189,7 @@ function render(){
   });
 }
 
-/* expose */
+/* ===== GLOBAL ===== */
 window.login = login;
 window.logout = logout;
 window.addLaw = addLaw;
@@ -162,8 +198,10 @@ window.toggleFavorite = toggleFavorite;
 window.render = render;
 window.openLogin = openLogin;
 window.closeLogin = closeLogin;
+window.restoreBackup = restoreBackup;
 
-/* START */
+/* ===== START ===== */
+loadData();
 updateUI();
 render();
 </script>
