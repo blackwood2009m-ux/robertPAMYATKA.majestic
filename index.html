@@ -1,327 +1,154 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Памятка законов</title>
+<script>
+const ADMIN_PASSWORD = "1234"; // простой вход (можешь поменять)
 
-<style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif;}
-
-body{
-background:#090b12;
-color:white;
-min-height:100vh;
-padding:30px;
-}
-
-.blur{
-filter: blur(6px);
-pointer-events:none;
-user-select:none;
-}
-
-.top{
-display:flex;
-justify-content:space-between;
-align-items:center;
-margin-bottom:30px;
-gap:10px;
-flex-wrap:wrap;
-}
-
-.logo{font-size:28px;font-weight:bold;}
-
-.add-btn{
-background:#e96d83;
-border:none;
-padding:12px 20px;
-color:white;
-border-radius:10px;
-cursor:pointer;
-}
-
-.hidden{display:none;}
-
-.search{
-width:100%;
-padding:15px;
-border:none;
-border-radius:10px;
-background:#11141f;
-color:white;
-margin-bottom:30px;
-}
-
-.columns{
-display:grid;
-grid-template-columns:1fr 1fr 1fr;
-gap:20px;
-}
-
-.column{
-background:#0f1420;
-padding:15px;
-border-radius:15px;
-}
-
-.card{
-background:#171d2b;
-padding:15px;
-border-radius:10px;
-margin-bottom:10px;
-position:relative;
-}
-
-.card-title{
-color:#ff8da0;
-font-weight:bold;
-margin-bottom:5px;
-}
-
-.delete{
-position:absolute;
-top:10px;
-right:10px;
-cursor:pointer;
-color:red;
-font-size:18px;
-}
-
-.heart{
-position:absolute;
-top:10px;
-right:35px;
-cursor:pointer;
-font-size:18px;
-}
-
-/* MODAL */
-.modal{
-position:fixed;
-top:0;left:0;
-width:100%;height:100%;
-display:none;
-align-items:center;
-justify-content:center;
-background:rgba(0,0,0,0.6);
-backdrop-filter: blur(6px);
-z-index:1000;
-}
-
-.modal-box{
-width:320px;
-background:#1b1f2a;
-padding:20px;
-border-radius:15px;
-display:flex;
-flex-direction:column;
-gap:10px;
-}
-
-.modal-box input{
-padding:10px;
-border-radius:8px;
-border:none;
-outline:none;
-}
-
-.modal-box button{
-padding:10px;
-border-radius:8px;
-border:none;
-cursor:pointer;
-font-weight:bold;
-}
-
-.login-btn{background:#e96d83;color:white;}
-.cancel-btn{background:#333;color:white;}
-</style>
-</head>
-
-<body>
-
-<div id="mainContent">
-
-<div class="top">
-<div class="logo">Памятка законов</div>
-
-<button class="add-btn hidden" id="addBtn" onclick="addLaw()">+ Добавить закон</button>
-<button class="add-btn hidden" id="logoutBtn" onclick="logout()">Выйти</button>
-<button class="add-btn" id="loginBtn" onclick="openLogin()">Войти</button>
-</div>
-
-<input id="search" class="search" placeholder="Поиск..." onkeyup="render()">
-
-<div class="columns">
-<div class="column"><h2>ПГО</h2><div id="ПГО"></div></div>
-<div class="column"><h2>ПОиП</h2><div id="ПОиП"></div></div>
-<div class="column"><h2>ПКО</h2><div id="ПКО"></div></div>
-</div>
-
-</div>
-
-<!-- MODAL -->
-<div class="modal" id="modal">
-<div class="modal-box">
-<h2>Вход</h2>
-<input id="email" placeholder="Email">
-<input id="pass" type="password" placeholder="Password">
-<button class="login-btn" onclick="login()">ВОЙТИ</button>
-<button class="cancel-btn" onclick="closeLogin()">ОТМЕНА</button>
-</div>
-</div>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import {
-getFirestore,
-collection,
-addDoc,
-deleteDoc,
-doc,
-onSnapshot,
-updateDoc
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-import {
-getAuth,
-signInWithEmailAndPassword,
-signOut,
-onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-const firebaseConfig = {
-apiKey: "YOUR_KEY",
-authDomain: "YOUR_DOMAIN",
-projectId: "YOUR_ID",
-storageBucket: "YOUR_BUCKET",
-messagingSenderId: "YOUR_SENDER",
-appId: "YOUR_APP_ID"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-
-/* 👉 твой админ email */
-const ADMIN_EMAIL = "YOUR_ADMIN_EMAIL@gmail.com";
-
-let user = null;
 let isAdmin = false;
 
-let laws = {ПГО:[],ПОиП:[],ПКО:[]};
+let laws = {
+  "ПГО": [],
+  "ПОиП": [],
+  "ПКО": []
+};
 
-/* AUTH */
-onAuthStateChanged(auth, (u)=>{
-user = u;
-isAdmin = u && u.email === ADMIN_EMAIL;
-updateUI();
-render();
-});
-
-window.login = async function(){
-let email = document.getElementById("email").value;
-let pass = document.getElementById("pass").value;
-
-try{
-await signInWithEmailAndPassword(auth,email,pass);
-closeLogin();
-}catch(e){
-alert("Ошибка входа");
+/* LOAD */
+function loadData(){
+  const saved = localStorage.getItem("lawsData");
+  if(saved){
+    laws = JSON.parse(saved);
+  }
 }
+loadData();
+
+/* SAVE */
+function saveData(){
+  localStorage.setItem("lawsData", JSON.stringify(laws));
 }
 
-window.logout = async function(){
-await signOut(auth);
+/* LOGIN */
+function login(){
+  const pass = document.getElementById("pass").value;
+
+  if(pass === ADMIN_PASSWORD){
+    isAdmin = true;
+    closeLogin();
+    updateUI();
+    render();
+  } else {
+    alert("Неверный пароль");
+  }
+}
+
+function logout(){
+  isAdmin = false;
+  updateUI();
+  render();
 }
 
 /* UI */
 function updateUI(){
-document.getElementById("addBtn").classList.toggle("hidden", !isAdmin);
-document.getElementById("logoutBtn").classList.toggle("hidden", !user);
-document.getElementById("loginBtn").classList.toggle("hidden", !!user);
+  document.getElementById("addBtn").classList.toggle("hidden", !isAdmin);
+  document.getElementById("logoutBtn").classList.toggle("hidden", !isAdmin);
+  document.getElementById("loginBtn").classList.toggle("hidden", isAdmin);
 }
 
 /* MODAL */
-window.openLogin = ()=>{
-document.getElementById("modal").style.display="flex";
-document.getElementById("mainContent").classList.add("blur");
+function openLogin(){
+  document.getElementById("modal").style.display = "flex";
+  document.getElementById("mainContent").classList.add("blur");
 }
 
-window.closeLogin = ()=>{
-document.getElementById("modal").style.display="none";
-document.getElementById("mainContent").classList.remove("blur");
+function closeLogin(){
+  document.getElementById("modal").style.display = "none";
+  document.getElementById("mainContent").classList.remove("blur");
 }
 
-/* DATA */
-window.addLaw = async function(){
-if(!isAdmin) return;
+/* ADD */
+function addLaw(){
+  if(!isAdmin) return;
 
-let c = prompt("1-ПГО 2-ПОиП 3-ПКО");
-let code = c==="1"?"ПГО":c==="2"?"ПОиП":c==="3"?"ПКО":null;
+  let c = prompt("1-ПГО 2-ПОиП 3-ПКО");
+  let code = c==="1"?"ПГО":c==="2"?"ПОиП":c==="3"?"ПКО":null;
 
-let title = prompt("Название");
-let text = prompt("Текст");
+  let title = prompt("Название");
+  let text = prompt("Текст");
 
-await addDoc(collection(db,code),{
-title,text,favorite:false
-});
+  const id = Date.now().toString();
+
+  laws[code].push({
+    id,
+    title,
+    text,
+    favorite:false
+  });
+
+  saveData();
+  render();
 }
 
-window.deleteLaw = async function(code,id){
-if(!isAdmin) return;
-await deleteDoc(doc(db,code,id));
+/* DELETE */
+function deleteLaw(code,id){
+  if(!isAdmin) return;
+
+  laws[code] = laws[code].filter(l => l.id !== id);
+  saveData();
+  render();
 }
 
-window.toggleFavorite = async function(code,id,val){
-await updateDoc(doc(db,code,id),{
-favorite:!val
-});
-}
+/* FAVORITE */
+function toggleFavorite(code,id){
+  laws[code] = laws[code].map(l => {
+    if(l.id === id){
+      l.favorite = !l.favorite;
+    }
+    return l;
+  });
 
-/* LISTEN */
-function listen(code){
-onSnapshot(collection(db,code),(snap)=>{
-laws[code]=snap.docs.map(d=>({id:d.id,...d.data()}));
-render();
-});
+  saveData();
+  render();
 }
-
-["ПГО","ПОиП","ПКО"].forEach(listen);
 
 /* RENDER */
-window.render = function(){
-let s=document.getElementById("search").value.toLowerCase();
+function render(){
+  let s = document.getElementById("search").value.toLowerCase();
 
-["ПГО","ПОиП","ПКО"].forEach(code=>{
-let c=document.getElementById(code);
-c.innerHTML="";
+  ["ПГО","ПОиП","ПКО"].forEach(code=>{
+    let c = document.getElementById(code);
+    c.innerHTML = "";
 
-laws[code]
-.filter(l=>l.title.toLowerCase().includes(s)||l.text.toLowerCase().includes(s))
-.forEach(law=>{
+    laws[code]
+    .filter(l =>
+      l.title.toLowerCase().includes(s) ||
+      l.text.toLowerCase().includes(s)
+    )
+    .forEach(law=>{
+      c.innerHTML += `
+        <div class="card">
 
-c.innerHTML+=`
-<div class="card">
+          ${isAdmin ? `<div class="delete" onclick="deleteLaw('${code}','${law.id}')">✖</div>` : ""}
 
-${isAdmin ? `<div class="delete" onclick="deleteLaw('${code}','${law.id}')">✖</div>` : ""}
+          <div class="heart" onclick="toggleFavorite('${code}','${law.id}')">
+            ${law.favorite ? "❤️" : "🤍"}
+          </div>
 
-<div class="heart" onclick="toggleFavorite('${code}','${law.id}',${law.favorite})">
-${law.favorite?"❤️":"🤍"}
-</div>
+          <div class="card-title">${law.title}</div>
+          <div>${law.text}</div>
 
-<div class="card-title">${law.title}</div>
-<div>${law.text}</div>
-
-</div>
-`;
-});
-});
+        </div>
+      `;
+    });
+  });
 }
 
+/* expose */
+window.addLaw = addLaw;
+window.deleteLaw = deleteLaw;
+window.toggleFavorite = toggleFavorite;
+window.render = render;
+window.openLogin = openLogin;
+window.closeLogin = closeLogin;
+window.login = login;
+window.logout = logout;
+
+/* start */
+updateUI();
 render();
 </script>
-
-</body>
-</html>
